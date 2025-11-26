@@ -31,13 +31,75 @@ setInterval(() => {
 // REST API Endpoints
 
 // Health check
+// Health check & Dashboard
 app.get('/', (req, res) => {
-    res.json({
-        service: 'Cession Discovery Server',
-        status: 'online',
-        peers: peers.size,
-        version: '1.0.0'
-    });
+    const peerList = Array.from(peers.values()).map(p => ({
+        peerId: p.peerId,
+        name: p.name,
+        email: p.email,
+        ip: p.ip || 'unknown',
+        lastSeen: new Date(p.lastSeen).toLocaleString(),
+        transport: p.ws ? 'WebSocket' : 'REST'
+    }));
+
+    const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Discovery Server Dashboard</title>
+        <meta http-equiv="refresh" content="5">
+        <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; max-width: 1200px; margin: 0 auto; padding: 20px; background: #f0f2f5; }
+            .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; }
+            h1 { color: #1a73e8; margin-top: 0; }
+            table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+            th, td { text-align: left; padding: 12px; border-bottom: 1px solid #ddd; }
+            th { background-color: #f8f9fa; color: #5f6368; }
+            tr:hover { background-color: #f5f5f5; }
+            .status-badge { background: #e6f4ea; color: #1e8e3e; padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: bold; }
+            .empty { color: #5f6368; font-style: italic; padding: 20px; text-align: center; }
+        </style>
+    </head>
+    <body>
+        <div class="card">
+            <h1>🚀 Discovery Server Status</h1>
+            <p><strong>Status:</strong> <span class="status-badge">ONLINE</span></p>
+            <p><strong>Active Peers:</strong> ${peers.size}</p>
+            <p><strong>Uptime:</strong> ${process.uptime().toFixed(0)} seconds</p>
+        </div>
+
+        <div class="card">
+            <h2>📱 Connected Devices</h2>
+            ${peers.size > 0 ? `
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Peer ID</th>
+                        <th>Transport</th>
+                        <th>Last Seen</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${peerList.map(p => `
+                    <tr>
+                        <td><strong>${p.name}</strong></td>
+                        <td>${p.email}</td>
+                        <td><code>${p.peerId}</code></td>
+                        <td><span class="status-badge">${p.transport}</span></td>
+                        <td>${p.lastSeen}</td>
+                    </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+            ` : '<div class="empty">No devices connected yet. Waiting for peers...</div>'}
+        </div>
+    </body>
+    </html>
+    `;
+
+    res.send(html);
 });
 
 // Register a peer
@@ -54,6 +116,7 @@ app.post('/register', (req, res) => {
         email: email || 'unknown',
         publicKey: publicKey || '',
         lastSeen: Date.now(),
+        ip: req.ip || req.connection.remoteAddress,
         ws: null
     };
 
