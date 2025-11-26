@@ -267,6 +267,7 @@ wss.on('connection', (ws, req) => {
                             name: p.name,
                             email: p.email,
                             publicKey: p.publicKey,
+                            ip: p.ip,
                             online: true
                         }))
                     }));
@@ -320,6 +321,7 @@ function broadcastPeerList() {
         name: peer.name,
         email: peer.email,
         publicKey: peer.publicKey,
+        ip: peer.ip,
         online: true
     }));
 
