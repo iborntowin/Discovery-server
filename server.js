@@ -236,24 +236,40 @@ wss.on('connection', (ws, req) => {
             switch (data.type) {
                 case 'register':
                     peerId = data.peerId;
-                    const peer = peers.get(peerId);
-                    if (peer) {
+                    let peer = peers.get(peerId);
+
+                    // Create peer if it doesn't exist (allow direct WebSocket registration)
+                    if (!peer) {
+                        peer = {
+                            peerId: data.peerId,
+                            name: data.name || 'Unknown',
+                            email: data.email || 'unknown',
+                            publicKey: data.publicKey || '',
+                            lastSeen: Date.now(),
+                            ip: req.socket.remoteAddress,
+                            ws: ws
+                        };
+                        peers.set(peerId, peer);
+                        console.log(`Peer registered via WebSocket: ${peer.name} (${peerId})`);
+                        broadcastPeerList();
+                    } else {
+                        // Peer exists, just attach WebSocket
                         peer.ws = ws;
                         peer.lastSeen = Date.now();
-                        console.log(`WebSocket registered for peer: ${peer.name}`);
-
-                        // Send current peer list
-                        ws.send(JSON.stringify({
-                            type: 'peers',
-                            peers: Array.from(peers.values()).map(p => ({
-                                peerId: p.peerId,
-                                name: p.name,
-                                email: p.email,
-                                publicKey: p.publicKey,
-                                online: true
-                            }))
-                        }));
+                        console.log(`WebSocket attached to existing peer: ${peer.name}`);
                     }
+
+                    // Send current peer list
+                    ws.send(JSON.stringify({
+                        type: 'peers',
+                        peers: Array.from(peers.values()).map(p => ({
+                            peerId: p.peerId,
+                            name: p.name,
+                            email: p.email,
+                            publicKey: p.publicKey,
+                            online: true
+                        }))
+                    }));
                     break;
 
                 case 'heartbeat':
